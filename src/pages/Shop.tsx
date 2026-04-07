@@ -1,10 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, Star, ShoppingBag, Check, X, SlidersHorizontal } from "lucide-react";
+import { Search, ShoppingBag, X, SlidersHorizontal, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "../store/useCartStore";
 import { useSearchStore } from "../store/useSearchStore";
-import { TiltCard } from "../components/ui/TiltCard";
 import { db } from "../lib/firebase";
 import { collection, onSnapshot, query as fsQuery, orderBy } from "firebase/firestore";
 import toast from "react-hot-toast";
@@ -15,7 +14,6 @@ export const Shop = () => {
   const { addItem } = useCartStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [activeSort, setActiveSort] = useState<string>("featured");
 
@@ -41,208 +39,177 @@ export const Shop = () => {
 
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     e.preventDefault();
+    e.stopPropagation();
     addItem({ ...product, quantity: 1 });
-    toast.success(`${product.name} added to cart`);
+    toast.success(`${product.name} added`);
   };
 
-  const categories = ["all", "men", "women", "unisex", "accessories", "offers"];
+  const categories = ["all", "men", "women", "unisex"];
 
   return (
-    <div className="w-full min-h-screen bg-dark-950">
-      {/* Category Strip */}
-      <div className="border-b border-white/[0.06] py-4 hidden md:block">
-        <div className="max-w-[1400px] mx-auto px-6 flex gap-8 items-center">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`text-[11px] uppercase font-medium tracking-[0.2em] transition-all relative pb-1 ${
-                activeCategory === cat
-                  ? "text-gold-500"
-                  : "text-white/40 hover:text-white/70"
-              }`}
-            >
-              {cat}
-              {activeCategory === cat && (
-                <motion.div layoutId="cat-underline" className="absolute bottom-0 left-0 right-0 h-px bg-gold-500" />
-              )}
-            </button>
-          ))}
-        </div>
+    <div className="w-full min-h-screen bg-black">
+
+      {/* ─── Page Header ─── */}
+      <div className="pt-32 md:pt-40 pb-12 md:pb-16 text-center">
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          className="text-[10px] tracking-[0.5em] uppercase text-gold-400/50 mb-4"
+        >
+          Collection
+        </motion.p>
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.1 }}
+          className="font-display text-4xl md:text-6xl font-light text-white/90 tracking-wide"
+        >
+          Timepieces
+        </motion.h1>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-6 py-10 flex gap-10">
-        {/* Sidebar Filters */}
-        <aside className="hidden lg:block w-60 flex-shrink-0 space-y-8">
-          <div className="glass rounded-2xl p-6 space-y-6 sticky top-28">
-            <h3 className="font-display text-sm uppercase tracking-[0.15em] text-white/80 border-b border-white/[0.06] pb-3 flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4 text-gold-500" /> Filters
-            </h3>
-
-            <div>
-              <p className="text-[10px] font-medium text-white/30 uppercase tracking-[0.2em] mb-3">Categories</p>
-              {["all", "men", "women", "unisex"].map(cat => (
-                <label key={cat} className="flex items-center gap-3 py-1.5 cursor-pointer group">
-                  <div className={`w-4 h-4 rounded-full border-2 transition-all flex items-center justify-center ${
-                    activeCategory === cat ? "border-gold-500 bg-gold-500" : "border-white/20 group-hover:border-white/40"
-                  }`}>
-                    {activeCategory === cat && <Check className="w-2.5 h-2.5 text-black" />}
-                  </div>
-                  <span className={`text-sm capitalize transition-colors ${
-                    activeCategory === cat ? "text-gold-500" : "text-white/50 group-hover:text-white/70"
-                  }`}>{cat}</span>
-                </label>
-              ))}
-            </div>
-
-            <div>
-              <p className="text-[10px] font-medium text-white/30 uppercase tracking-[0.2em] mb-3">Customer Ratings</p>
-              {[4, 3, 2].map(star => (
-                <label key={star} className="flex items-center gap-3 py-1.5 cursor-pointer group">
-                  <input type="checkbox" className="w-4 h-4 accent-gold-500 bg-dark-900 border-white/20 rounded" />
-                  <span className="text-sm text-white/50 flex items-center gap-1.5 group-hover:text-white/70">
-                    {star} <Star className="w-3 h-3 fill-gold-500 text-gold-500" /> & above
-                  </span>
-                </label>
-              ))}
-            </div>
-
-            <div>
-              <p className="text-[10px] font-medium text-white/30 uppercase tracking-[0.2em] mb-3">Price Range</p>
-              <input title="Price Filter" type="range" className="w-full accent-gold-500" />
-              <div className="flex justify-between text-[10px] text-white/30 mt-1">
-                <span>₹50K</span>
-                <span>₹500K</span>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-grow">
-          {/* Top Bar */}
-          <div className="glass rounded-xl p-4 mb-8 flex justify-between items-center">
-            <p className="text-sm text-white/50">
-              Showing <span className="text-white font-medium">{filteredProducts.length}</span> results
-              {activeCategory !== "all" && (
-                <> for <span className="text-gold-500 font-medium capitalize">"{activeCategory}"</span></>
-              )}
-            </p>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-white/30 uppercase tracking-wider">Sort:</span>
-              <select
-                value={activeSort}
-                onChange={(e) => setActiveSort(e.target.value)}
-                className="text-xs font-medium bg-transparent text-white/70 border-none focus:ring-0 cursor-pointer uppercase tracking-wider"
+      {/* ─── Filter Bar ─── */}
+      <div className="border-y border-white/[0.04] mb-12">
+        <div className="max-w-[1600px] mx-auto px-6 md:px-12 py-4 flex items-center justify-between">
+          {/* Categories - desktop */}
+          <div className="hidden md:flex items-center gap-8">
+            {categories.map(cat => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setActiveCategory(cat)}
+                className={`text-[10px] tracking-[0.3em] uppercase font-light transition-all duration-300 ${
+                  activeCategory === cat ? "text-white" : "text-white/25 hover:text-white/50"
+                }`}
               >
-                <option value="featured" className="bg-dark-900">Featured</option>
-                <option value="price-low" className="bg-dark-900">Price: Low to High</option>
-                <option value="price-high" className="bg-dark-900">Price: High to Low</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-            {filteredProducts.map((product, i) => (
-              <motion.div
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05, duration: 0.4 }}
-                key={product.id}
-              >
-                <TiltCard className="group h-full">
-                  <div className="glass rounded-2xl overflow-hidden hover-glow transition-all duration-500 hover:border-gold-500/20 flex flex-col h-full">
-                    <Link to={`/product/${product.id}`} className="block relative aspect-square sm:aspect-[4/5] overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-t from-dark-950/80 via-transparent to-transparent z-10" />
-                      <img
-                        src={product.images[0]}
-                        alt={product.name}
-                        className="w-full h-full object-contain p-4 sm:p-6 group-hover:scale-110 transition-transform duration-700"
-                      />
-                      {product.trending && (
-                        <span className="absolute top-3 left-3 z-20 bg-gold-500/90 text-black text-[8px] sm:text-[9px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
-                          Hot
-                        </span>
-                      )}
-                      {product.discount && (
-                        <span className="absolute top-3 right-3 z-20 bg-red-500/90 text-white text-[8px] sm:text-[9px] font-bold px-2 py-1 rounded-full">
-                          -{product.discount}%
-                        </span>
-                      )}
-                    </Link>
-
-                    <div className="p-3 sm:p-5 flex flex-col flex-grow border-t border-white/[0.05]">
-                      <Link to={`/product/${product.id}`} className="text-[11px] sm:text-sm font-medium text-white/80 hover:text-gold-400 mb-2 line-clamp-2 min-h-[32px] sm:min-h-[40px] transition-colors font-display">
-                        {product.name}
-                      </Link>
-
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <span className="bg-gold-500/20 text-gold-400 text-[8px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                          {product.rating || 4.5} <Star className="w-2 h-2 sm:w-2.5 sm:h-2.5 fill-gold-500 text-gold-500" />
-                        </span>
-                        <span className="text-[9px] sm:text-xs text-white/30">({product.reviews || 0})</span>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2 mb-3">
-                        <span className="text-sm sm:text-xl font-bold text-white">₹{product.price.toLocaleString('en-IN')}</span>
-                        {product.oldPrice && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] sm:text-xs text-white/30 line-through">₹{product.oldPrice.toLocaleString('en-IN')}</span>
-                            <span className="text-[9px] sm:text-[10px] font-bold text-green-400">
-                              {Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}% off
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="hidden sm:block mb-4">
-                        <p className="text-[10px] text-white/30 flex items-center gap-1.5">
-                          <Check className="w-3 h-3 text-gold-500" /> Free Insured Delivery
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={(e) => handleAddToCart(e, product)}
-                        className="mt-auto w-full bg-gold-500/10 hover:bg-gold-500 text-gold-500 hover:text-black py-2 sm:py-3 rounded-xl font-bold text-[10px] sm:text-xs tracking-[0.15em] uppercase transition-all duration-300 flex items-center justify-center gap-1.5 border border-gold-500/20 hover:border-gold-500"
-                      >
-                        <ShoppingBag className="w-3 h-3 sm:w-4 sm:h-4" /> Add to Cart
-                      </button>
-                    </div>
-                  </div>
-                </TiltCard>
-              </motion.div>
+                {cat}
+              </button>
             ))}
           </div>
 
-          {filteredProducts.length === 0 && (
-            <div className="glass rounded-2xl p-12 sm:p-20 text-center">
-              <Search className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-white/10" />
-              <h3 className="font-display text-lg sm:text-xl text-white/30 uppercase tracking-wider">No results found</h3>
-              <p className="text-white/20 text-sm mt-2">Try adjusting your filters or search terms</p>
-            </div>
-          )}
-        </main>
+          {/* Results count */}
+          <p className="text-[10px] tracking-[0.2em] text-white/20 uppercase md:hidden">
+            {filteredProducts.length} pieces
+          </p>
+
+          {/* Sort + Count */}
+          <div className="flex items-center gap-6">
+            <span className="text-[10px] tracking-[0.15em] text-white/15 uppercase hidden md:block">
+              {filteredProducts.length} pieces
+            </span>
+            <select
+              title="Sort products"
+              value={activeSort}
+              onChange={(e) => setActiveSort(e.target.value)}
+              className="text-[10px] tracking-[0.2em] uppercase bg-transparent text-white/40 border-none focus:ring-0 cursor-pointer font-light"
+            >
+              <option value="featured" className="bg-black">Featured</option>
+              <option value="price-low" className="bg-black">Price: Low</option>
+              <option value="price-high" className="bg-black">Price: High</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      {/* Mobile Filter & Sort Bar */}
-      <div className="lg:hidden fixed bottom-16 left-4 right-4 h-12 glass-strong rounded-2xl grid grid-cols-2 z-40 overflow-hidden">
+      {/* ─── Product Grid ─── */}
+      <div className="max-w-[1600px] mx-auto px-4 md:px-12 pb-32">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-px md:gap-1">
+          {filteredProducts.map((product, i) => (
+            <motion.div
+              key={product.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: i * 0.04 }}
+            >
+              <Link
+                to={`/product/${product.id}`}
+                className="group relative block bg-[#060606] overflow-hidden"
+              >
+                {/* Image */}
+                <div className="relative aspect-[3/4] overflow-hidden">
+                  <img
+                    src={product.images[0]}
+                    alt={product.name}
+                    className="w-full h-full object-contain p-6 md:p-10 transition-transform duration-[1.2s] ease-out group-hover:scale-105"
+                  />
+
+                  {/* Overlay on hover */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-500" />
+
+                  {/* Quick add - appears on hover */}
+                  <div className="absolute bottom-4 left-4 right-4 z-10 opacity-0 translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
+                    <button
+                      type="button"
+                      onClick={(e) => handleAddToCart(e, product)}
+                      className="w-full bg-white/[0.08] hover:bg-white/[0.15] backdrop-blur-xl text-white text-[10px] tracking-[0.3em] uppercase py-3 transition-all duration-300 flex items-center justify-center gap-2"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" /> Add to Cart
+                    </button>
+                  </div>
+
+                  {/* Badges */}
+                  {product.trending && (
+                    <span className="absolute top-4 left-4 text-[8px] tracking-[0.25em] uppercase text-gold-400/70">
+                      Trending
+                    </span>
+                  )}
+                  {product.discount && (
+                    <span className="absolute top-4 right-4 text-[8px] tracking-[0.2em] uppercase text-white/40">
+                      -{product.discount}%
+                    </span>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="p-4 md:p-5">
+                  <h3 className="font-display text-sm md:text-base text-white/70 font-light tracking-wide line-clamp-1 mb-1.5 group-hover:text-white/90 transition-colors">
+                    {product.name}
+                  </h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs md:text-sm text-gold-400/60 tracking-wider font-light">
+                      ₹{product.price.toLocaleString("en-IN")}
+                    </span>
+                    {product.oldPrice && (
+                      <span className="text-[10px] text-white/15 line-through">
+                        ₹{product.oldPrice.toLocaleString("en-IN")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+
+        {filteredProducts.length === 0 && (
+          <div className="py-32 text-center">
+            <Search className="w-10 h-10 mx-auto mb-6 text-white/[0.06]" />
+            <h3 className="font-display text-xl text-white/20 tracking-wider">No timepieces found</h3>
+            <p className="text-white/10 text-xs tracking-wider mt-2">Adjust your filters or search terms</p>
+          </div>
+        )}
+      </div>
+
+      {/* ─── Mobile bottom bar ─── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-black/90 backdrop-blur-xl border-t border-white/[0.04] grid grid-cols-2 z-40">
         <button
-          onClick={() => setActiveSort(activeSort === 'price-low' ? 'price-high' : 'price-low')}
-          className="flex items-center justify-center gap-2 text-[10px] font-bold border-r border-white/[0.06] uppercase tracking-wider text-white/60"
+          type="button"
+          onClick={() => setActiveSort(activeSort === "price-low" ? "price-high" : "price-low")}
+          className="flex items-center justify-center gap-2 text-[10px] font-light border-r border-white/[0.04] uppercase tracking-[0.2em] text-white/30"
         >
-          Sort By
+          <ArrowRight className="w-3 h-3 rotate-90" /> Sort
         </button>
         <button
+          type="button"
           onClick={() => setShowMobileFilters(true)}
-          className="flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider text-white/60"
+          className="flex items-center justify-center gap-2 text-[10px] font-light uppercase tracking-[0.2em] text-white/30"
         >
           <SlidersHorizontal className="w-3 h-3" /> Filter
         </button>
       </div>
 
-      {/* Mobile Filter Drawer */}
+      {/* ─── Mobile Filter Drawer ─── */}
       <AnimatePresence>
         {showMobileFilters && (
           <>
@@ -251,38 +218,35 @@ export const Shop = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowMobileFilters(false)}
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 lg:hidden"
+              className="fixed inset-0 bg-black/80 z-50 md:hidden"
             />
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 bg-dark-900 z-[60] p-6 rounded-t-3xl border-t border-white/[0.08] lg:hidden shadow-2xl"
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 bg-[#0a0a0a] z-[60] p-8 rounded-t-2xl border-t border-white/[0.06] md:hidden"
             >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="font-display font-bold text-lg">Filters</h3>
-                <button
-                  title="Close Filters"
-                  onClick={() => setShowMobileFilters(false)}
-                  className="p-2 glass rounded-full"
-                >
-                  <X className="w-5 h-5 text-white/60" />
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="font-display text-lg font-light tracking-wider">Filter</h3>
+                <button type="button" title="Close filters" onClick={() => setShowMobileFilters(false)} className="text-white/20 hover:text-white/50">
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="space-y-6 max-h-[60vh] overflow-y-auto pb-10">
+              <div className="space-y-8">
                 <div>
-                  <p className="text-[10px] font-medium text-white/30 uppercase tracking-[0.2em] mb-3">Categories</p>
+                  <p className="text-[9px] tracking-[0.3em] uppercase text-white/20 mb-4">Category</p>
                   <div className="flex flex-wrap gap-2">
-                    {["all", "men", "women", "unisex"].map(cat => (
+                    {categories.map(cat => (
                       <button
                         key={cat}
+                        type="button"
                         onClick={() => { setActiveCategory(cat); setShowMobileFilters(false); }}
-                        className={`px-4 py-2 rounded-full border text-sm capitalize transition-all ${
+                        className={`px-5 py-2.5 text-[10px] tracking-[0.2em] uppercase transition-all ${
                           activeCategory === cat
-                            ? "bg-gold-500 text-black border-gold-500 font-bold"
-                            : "border-white/10 text-white/50 hover:border-white/30"
+                            ? "bg-white text-black font-medium"
+                            : "bg-white/[0.04] text-white/30"
                         }`}
                       >
                         {cat}
@@ -292,16 +256,17 @@ export const Shop = () => {
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-medium text-white/30 uppercase tracking-[0.2em] mb-3">Sort Results</p>
+                  <p className="text-[9px] tracking-[0.3em] uppercase text-white/20 mb-4">Sort</p>
                   {["featured", "price-low", "price-high"].map(sort => (
                     <button
                       key={sort}
+                      type="button"
                       onClick={() => { setActiveSort(sort); setShowMobileFilters(false); }}
-                      className={`w-full text-left px-4 py-3 border-b border-white/[0.05] text-sm capitalize transition-colors ${
-                        activeSort === sort ? "text-gold-500 font-bold" : "text-white/50"
+                      className={`block w-full text-left py-3 border-b border-white/[0.03] text-xs tracking-[0.15em] capitalize transition-colors ${
+                        activeSort === sort ? "text-white" : "text-white/20"
                       }`}
                     >
-                      {sort.replace('-', ' ')}
+                      {sort.replace("-", ": ")}
                     </button>
                   ))}
                 </div>

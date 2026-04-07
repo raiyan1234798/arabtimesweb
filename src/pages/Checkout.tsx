@@ -4,15 +4,17 @@ import { useCartStore } from "../store/useCartStore";
 import { Button } from "../components/ui/button";
 import { auth, db } from "../lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, type User } from "firebase/auth";
 import toast from "react-hot-toast";
-import { ShieldCheck, ArrowLeft, Lock, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
+
+const inputClass = "w-full bg-transparent border border-white/[0.06] px-4 py-3.5 text-sm text-white tracking-wider font-light focus:outline-none focus:border-white/20 placeholder:text-white/10 transition-colors";
 
 export const Checkout = () => {
   const { items, getSummary, clearCart } = useCartStore();
   const { subtotal } = getSummary();
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -55,7 +57,6 @@ export const Checkout = () => {
         image: (item.images && item.images.length > 0) ? item.images[0] : ""
       }));
 
-
       const orderData = {
         userId: user?.uid || "guest",
         customer: formData,
@@ -66,7 +67,7 @@ export const Checkout = () => {
       };
 
       await addDoc(collection(db, "orders"), orderData);
-      
+
       // WhatsApp Redirect Logic
       const whatsappNumber = "+917397026980";
       let message = `*New Order Request from Arab Times*%0A%0A`;
@@ -77,7 +78,7 @@ export const Checkout = () => {
       message += `${formData.address}%0A`;
       message += `${formData.city}${formData.state ? `, ${formData.state}` : ""}${formData.zip ? ` - ${formData.zip}` : ""}%0A%0A`;
       message += `*Items:*%0A`;
-      
+
       orderItems.forEach((item, index) => {
         message += `${index + 1}. *${item.name}*%0A`;
         message += `   ID: ${item.id}%0A`;
@@ -85,131 +86,139 @@ export const Checkout = () => {
         message += `   Qty: ${item.quantity}%0A`;
         message += `   Image: ${item.image}%0A%0A`;
       });
-      
+
       message += `*Total Amount: ₹${subtotal.toLocaleString('en-IN')}*%0A%0A`;
       message += `Please confirm my order. Thank you!`;
 
       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
-      
-      toast.success("Order request saved. Redirecting to WhatsApp...");
-      
+
+      toast.success("Redirecting to WhatsApp...");
       clearCart();
-      
-      // Delay redirect slightly to show toast
+
       setTimeout(() => {
         window.open(whatsappUrl, '_blank');
         navigate("/");
       }, 1500);
 
-    } catch (error: any) {
-      toast.error(error.message || "Failed to process order.");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to process order.";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
-
-
   if (items.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-6 py-32 text-center text-white/50 tracking-widest uppercase mb-8">
-        No items to checkout. <Link to="/shop" className="text-gold-500 underline">Return to shop.</Link>
+      <div className="min-h-[60vh] flex items-center justify-center text-center px-6">
+        <div>
+          <p className="text-white/20 text-sm tracking-wider mb-4">No items to checkout.</p>
+          <Link to="/shop" className="text-[11px] tracking-[0.3em] uppercase text-gold-400/60 hover:text-gold-400 border-b border-gold-400/20 pb-1 transition-colors">
+            Return to shop
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12">
-      <button 
-        onClick={() => navigate('/cart')} 
-        className="text-white/60 hover:text-gold-500 flex items-center gap-2 mb-8 text-sm uppercase tracking-widest transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" /> Return to Cart
-      </button>
+    <div className="min-h-screen bg-black">
+      <div className="max-w-[1200px] mx-auto px-6 md:px-12 pt-28 md:pt-36 pb-24">
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-        
-        {/* CHECKOUT FORM */}
-        <div className="bg-dark-900 border border-white/10 rounded-3xl p-8 lg:p-12 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
-          <h2 className="text-3xl font-light tracking-widest uppercase mb-8 border-b border-white/10 pb-4 flex items-center gap-3">
-            Secure Form <Lock className="w-6 h-6 text-gold-500" />
-          </h2>
-          
-          <form onSubmit={handleCheckout} className="space-y-6">
-            <h3 className="text-xl font-medium tracking-wide text-white/80">Contact Details</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <input type="text" name="firstName" placeholder="First Name *" required onChange={handleChange} className="bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold-500 transition-colors" />
-              <input type="text" name="lastName" placeholder="Last Name" onChange={handleChange} className="bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold-500 transition-colors" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input type="email" name="email" value={formData.email} placeholder="Email Address *" required onChange={handleChange} className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold-500 transition-colors" />
-              <input type="tel" name="phone" placeholder="Phone Number *" required onChange={handleChange} className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold-500 transition-colors" />
-            </div>
-            
-            <h3 className="text-xl font-medium tracking-wide text-white/80 mt-8 pt-4 border-t border-white/10">Shipping Address</h3>
-            <input type="text" name="address" placeholder="Street Address *" required onChange={handleChange} className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold-500 transition-colors" />
-            <div className="grid grid-cols-2 gap-4">
-              <input type="text" name="city" placeholder="City *" required onChange={handleChange} className="bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold-500 transition-colors" />
-              <input type="text" name="state" placeholder="State/Province" onChange={handleChange} className="bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold-500 transition-colors" />
-            </div>
-            <input type="text" name="zip" placeholder="ZIP / Postal Code" onChange={handleChange} className="w-full max-w-xs bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold-500 transition-colors" />
+        <button
+          type="button"
+          onClick={() => navigate('/cart')}
+          className="text-white/15 hover:text-white/40 flex items-center gap-2 mb-12 text-[10px] tracking-[0.3em] uppercase transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Return to Cart
+        </button>
 
-            <div className="mt-12">
-              <Button type="submit" size="lg" disabled={loading} className="w-full rounded-xl py-6 tracking-widest text-lg font-bold uppercase group">
-                {loading ? (
-                  <>
-                    Processing... <Loader2 className="w-5 h-5 ml-2 animate-spin" />
-                  </>
-                ) : (
-                  <>
-                    Place Order <ShieldCheck className="w-5 h-5 ml-2 group-hover:text-black transition-colors" />
-                  </>
-                )}
-              </Button>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 md:gap-20">
 
-          </form>
-        </div>
+          {/* ─── Form ─── */}
+          <div>
+            <h2 className="font-display text-2xl md:text-3xl font-light tracking-wide text-white/80 mb-10 pb-6 border-b border-white/[0.04]">
+              Checkout
+            </h2>
 
-        {/* ORDER SUMMARY */}
-        <div className="space-y-8">
-          <div className="bg-[#111] border border-gold-500/20 rounded-3xl p-8 sticky top-32">
-            <h3 className="text-xl font-light tracking-widest uppercase mb-6 border-b border-white/10 pb-4">Order Summary</h3>
-            
-            <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-4 custom-scrollbar mb-6">
-              {items.map(item => (
-                <div key={item.id} className="flex gap-4 items-center border-b border-white/5 pb-4">
-                  <div className="w-16 h-16 bg-black rounded-lg border border-white/10 flex-shrink-0 p-1">
-                    <img src={item.images ? item.images[0] : ""} className="w-full h-full object-cover rounded" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-white text-sm tracking-wide">{item.name}</h4>
-                    <span className="text-xs text-white/40 uppercase">Qty: {item.quantity}</span>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-white font-medium">₹{(item.price * item.quantity).toLocaleString('en-IN')}</p>
-                  </div>
+            <form onSubmit={handleCheckout} className="space-y-8">
+              {/* Contact */}
+              <div>
+                <p className="text-[10px] tracking-[0.4em] uppercase text-white/20 mb-5">Contact</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="text" name="firstName" placeholder="First Name *" required onChange={handleChange} className={inputClass} />
+                  <input type="text" name="lastName" placeholder="Last Name" onChange={handleChange} className={inputClass} />
                 </div>
-              ))}
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                  <input type="email" name="email" value={formData.email} placeholder="Email *" required onChange={handleChange} className={inputClass} />
+                  <input type="tel" name="phone" placeholder="Phone *" required onChange={handleChange} className={inputClass} />
+                </div>
+              </div>
 
-            <div className="space-y-3 text-sm tracking-wide bg-black/50 p-6 rounded-2xl border border-white/5">
-              <div className="flex justify-between text-white/60">
-                <span>Subtotal</span>
-                <span>₹{subtotal.toLocaleString('en-IN')}</span>
+              {/* Address */}
+              <div>
+                <p className="text-[10px] tracking-[0.4em] uppercase text-white/20 mb-5">Shipping Address</p>
+                <input type="text" name="address" placeholder="Street Address *" required onChange={handleChange} className={`${inputClass} mb-3`} />
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <input type="text" name="city" placeholder="City *" required onChange={handleChange} className={inputClass} />
+                  <input type="text" name="state" placeholder="State" onChange={handleChange} className={inputClass} />
+                </div>
+                <input type="text" name="zip" placeholder="ZIP / Postal Code" onChange={handleChange} className={`${inputClass} max-w-[200px]`} />
               </div>
-              <div className="flex justify-between text-white/60">
-                <span>VIP Insured Shipping</span>
-                <span className="text-gold-500 font-bold text-xs uppercase">Free</span>
+
+              <div className="pt-4">
+                <Button type="submit" size="lg" disabled={loading} className="w-full rounded-none py-6 tracking-[0.3em] text-[11px] uppercase font-medium">
+                  {loading ? (
+                    <span className="flex items-center gap-2">Processing <Loader2 className="w-4 h-4 animate-spin" /></span>
+                  ) : (
+                    "Place Order"
+                  )}
+                </Button>
               </div>
-              <div className="flex justify-between pt-4 border-t border-white/10 mt-4 text-2xl">
-                <span className="font-light text-white">Total</span>
-                <span className="font-bold text-gold-500">₹{subtotal.toLocaleString('en-IN')}</span>
+            </form>
+          </div>
+
+          {/* ─── Summary ─── */}
+          <div>
+            <div className="sticky top-32 bg-[#060606] p-8 md:p-10">
+              <h3 className="font-display text-lg font-light tracking-wider text-white/50 mb-8 pb-4 border-b border-white/[0.04]">
+                Order Summary
+              </h3>
+
+              <div className="space-y-5 max-h-[40vh] overflow-y-auto no-scrollbar mb-8">
+                {items.map(item => (
+                  <div key={item.id} className="flex gap-4 items-center">
+                    <div className="w-16 h-16 bg-[#0a0a0a] flex-shrink-0">
+                      <img src={item.images ? item.images[0] : ""} alt={item.name} className="w-full h-full object-contain p-1.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-white/60 text-sm font-light tracking-wide truncate">{item.name}</h4>
+                      <span className="text-[10px] text-white/20 tracking-wider">Qty: {item.quantity}</span>
+                    </div>
+                    <p className="text-white/50 text-sm font-light tracking-wider flex-shrink-0">
+                      ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-3 text-sm pt-6 border-t border-white/[0.04]">
+                <div className="flex justify-between text-white/25">
+                  <span className="tracking-wider font-light">Subtotal</span>
+                  <span className="text-white/40">₹{subtotal.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between text-white/25">
+                  <span className="tracking-wider font-light">Shipping</span>
+                  <span className="text-[10px] tracking-[0.2em] uppercase text-gold-400/40">Complimentary</span>
+                </div>
+                <div className="flex justify-between pt-5 border-t border-white/[0.04] mt-3">
+                  <span className="font-display text-lg text-white/50">Total</span>
+                  <span className="font-display text-xl text-gold-400/70 tracking-wider">₹{subtotal.toLocaleString('en-IN')}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

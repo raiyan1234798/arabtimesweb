@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCartStore } from "../store/useCartStore";
 import { motion } from "framer-motion";
-import { ShoppingBag, Heart, ShieldCheck, ArrowLeft, Check, Loader2, Truck, Award } from "lucide-react";
+import { ShoppingBag, Heart, ArrowLeft, Check, Loader2, Shield, Truck } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { db } from "../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -16,7 +16,6 @@ export const ProductDetails = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
-  const [isHovering, setIsHovering] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -27,15 +26,14 @@ export const ProductDetails = () => {
         if (docSnap.exists()) {
           setProduct({ id: docSnap.id, ...docSnap.data() } as Product);
         } else {
-          toast.error("Timepiece not found in vault.");
+          toast.error("Timepiece not found.");
         }
       } catch (_err) {
-        toast.error("Failed to retrieve product details.");
+        toast.error("Failed to load product.");
       } finally {
         setLoading(false);
       }
     };
-
     fetchProduct();
   }, [id]);
 
@@ -43,160 +41,178 @@ export const ProductDetails = () => {
     if (!product) return;
     addItem({ ...product, quantity: 1 });
     toast.custom((t) => (
-      <div className={`flex items-center gap-4 glass-strong p-4 rounded-2xl shadow-[0_0_30px_rgba(255,215,0,0.1)] ${t.visible ? 'animate-fade-in' : 'animate-fade-out'}`}>
-        <div className="bg-gold-500 text-black p-2 rounded-full"><Check className="w-4 h-4" /></div>
+      <div className={`flex items-center gap-4 bg-[#111] border border-white/[0.06] p-4 rounded-none ${t.visible ? 'animate-fade-in' : ''}`}>
+        <div className="bg-gold-400 text-black p-1.5 rounded-full"><Check className="w-3 h-3" /></div>
         <div>
-          <h4 className="text-white font-bold text-sm">{product.name}</h4>
-          <p className="text-white/50 text-xs">Added to your collection.</p>
+          <p className="text-white text-sm font-light tracking-wide">{product.name}</p>
+          <p className="text-white/30 text-[10px] tracking-wider uppercase">Added to cart</p>
         </div>
       </div>
     ));
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-dark-950 flex flex-col items-center justify-center text-white gap-4">
-      <div className="relative">
-        <Loader2 className="w-12 h-12 text-gold-500 animate-spin" />
-        <div className="absolute inset-0 blur-xl bg-gold-500/20 rounded-full" />
-      </div>
-      <span className="tracking-[0.4em] uppercase text-[10px] text-white/30">Accessing Vault...</span>
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-6">
+      <Loader2 className="w-8 h-8 text-gold-400/40 animate-spin" />
+      <span className="tracking-[0.5em] uppercase text-[10px] text-white/15">Loading</span>
     </div>
   );
 
   if (!product) return (
-    <div className="min-h-screen bg-dark-950 flex flex-col items-center justify-center text-white p-6 text-center">
-      <h2 className="font-display text-3xl font-light tracking-wider mb-4 text-gradient-gold">Not Found</h2>
-      <p className="text-white/30 mb-8 max-w-md text-sm">The requested timepiece appears to be missing or delisted from our collection.</p>
-      <Button onClick={() => navigate("/shop")} className="uppercase tracking-[0.2em] font-bold rounded-full px-8">Return to Collection</Button>
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+      <h2 className="font-display text-3xl font-light text-white/60 mb-4">Not Found</h2>
+      <p className="text-white/20 text-sm mb-8">This timepiece is no longer available.</p>
+      <Button onClick={() => navigate("/shop")} className="uppercase tracking-[0.2em] text-xs">
+        Return to Collection
+      </Button>
     </div>
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-16 lg:py-24">
-      <button
-        onClick={() => navigate(-1)}
-        className="text-white/30 hover:text-gold-500 flex items-center gap-2 mb-8 md:mb-12 text-[10px] md:text-xs uppercase tracking-[0.2em] transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back to Collection
-      </button>
+    <div className="min-h-screen bg-black">
+      <div className="max-w-[1600px] mx-auto px-6 md:px-12 pt-28 md:pt-36 pb-24">
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16">
-
-        {/* IMAGE GALLERY */}
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.7 }}
-          className="flex flex-col gap-4 md:gap-6"
+        {/* Back link */}
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          onClick={() => navigate(-1)}
+          className="text-white/20 hover:text-white/50 flex items-center gap-2 mb-12 md:mb-16 text-[10px] tracking-[0.3em] uppercase transition-colors"
         >
-          <div
-            className="aspect-square glass rounded-3xl overflow-hidden relative group"
-            onMouseEnter={() => setIsHovering(true)}
-            onMouseLeave={() => setIsHovering(false)}
+          <ArrowLeft className="w-3.5 h-3.5" /> Back
+        </motion.button>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-20">
+
+          {/* ─── Image Gallery ─── */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(204,168,0,0.03)_0%,transparent_70%)] pointer-events-none z-10" />
+            {/* Main image */}
+            <div className="relative aspect-square bg-[#060606] overflow-hidden mb-3 group">
+              <motion.img
+                key={activeImg}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4 }}
+                src={product.images[activeImg]}
+                alt={product.name}
+                className="w-full h-full object-contain p-8 md:p-16 group-hover:scale-105 transition-transform duration-[1.5s] ease-out"
+              />
 
-            <motion.img
-              key={activeImg}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: isHovering ? 1.15 : 1 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              src={product.images[activeImg]}
-              alt={product.name}
-              className="w-full h-full object-contain p-6 md:p-12 transform-gpu"
-            />
-
-            {/* Image counter */}
-            <div className="absolute bottom-4 right-4 z-20 glass-strong rounded-full px-3 py-1 text-[10px] text-white/40 tracking-wider">
-              {activeImg + 1} / {product.images.length}
+              {/* Image counter */}
+              <span className="absolute bottom-4 right-4 text-[9px] tracking-[0.2em] text-white/15">
+                {activeImg + 1} / {product.images.length}
+              </span>
             </div>
-          </div>
 
-          <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 no-scrollbar">
-            {product.images.map((img, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveImg(idx)}
-                className={`w-16 h-16 md:w-20 md:h-20 rounded-xl border-2 overflow-hidden transition-all duration-300 flex-shrink-0 ${
-                  activeImg === idx
-                    ? "border-gold-500 shadow-[0_0_15px_rgba(204,168,0,0.15)]"
-                    : "border-white/[0.06] opacity-40 hover:opacity-80 bg-dark-900"
-                }`}
-              >
-                <img src={img} alt="" className="w-full h-full object-contain p-1" />
-              </button>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* DETAILS */}
-        <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.7, delay: 0.1 }}
-          className="flex flex-col justify-center"
-        >
-          {product.trending && (
-            <span className="inline-flex items-center gap-1.5 text-gold-500 text-[10px] uppercase tracking-[0.2em] font-medium mb-4 w-fit">
-              <span className="w-1.5 h-1.5 bg-gold-500 rounded-full animate-pulse" /> Trending Now
-            </span>
-          )}
-
-          <h1 className="font-display text-3xl md:text-5xl font-light tracking-wide text-white mb-3">{product.name}</h1>
-
-          <div className="flex items-baseline gap-3 mb-6 md:mb-8">
-            <p className="text-2xl md:text-3xl font-semibold text-gradient-gold tracking-wider">₹{product.price.toLocaleString('en-IN')}</p>
-            {product.oldPrice && (
-              <>
-                <span className="text-base text-white/20 line-through">₹{product.oldPrice.toLocaleString('en-IN')}</span>
-                <span className="text-xs font-bold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">
-                  {Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}% off
-                </span>
-              </>
+            {/* Thumbnails */}
+            {product.images.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                {product.images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveImg(idx)}
+                    className={`w-20 h-20 flex-shrink-0 bg-[#060606] transition-all duration-300 ${
+                      activeImg === idx
+                        ? "opacity-100 ring-1 ring-white/20"
+                        : "opacity-30 hover:opacity-60"
+                    }`}
+                  >
+                    <img src={img} alt="" className="w-full h-full object-contain p-2" />
+                  </button>
+                ))}
+              </div>
             )}
-          </div>
+          </motion.div>
 
-          <div className="border-t border-white/[0.06] pt-6 md:pt-8 mb-6 md:mb-8">
-            <p className="text-white/50 leading-relaxed font-light text-sm md:text-base">
+          {/* ─── Product Info ─── */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-col justify-center"
+          >
+            {/* Breadcrumb */}
+            {product.category && (
+              <p className="text-[9px] tracking-[0.4em] uppercase text-gold-400/40 mb-6">
+                {product.category}
+              </p>
+            )}
+
+            <h1 className="font-display text-3xl md:text-5xl font-light tracking-wide text-white/90 leading-tight mb-6">
+              {product.name}
+            </h1>
+
+            {/* Price */}
+            <div className="flex items-baseline gap-4 mb-8 pb-8 border-b border-white/[0.04]">
+              <span className="font-display text-2xl md:text-3xl text-gold-400/80 font-light tracking-wider">
+                ₹{product.price.toLocaleString("en-IN")}
+              </span>
+              {product.oldPrice && (
+                <>
+                  <span className="text-sm text-white/15 line-through">
+                    ₹{product.oldPrice.toLocaleString("en-IN")}
+                  </span>
+                  <span className="text-[10px] tracking-[0.15em] uppercase text-green-500/60">
+                    {Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)}% off
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Description */}
+            <p className="text-white/30 text-sm md:text-base font-extralight leading-[1.8] tracking-wide mb-8">
               {product.description}
             </p>
-          </div>
 
-          <div className="flex flex-wrap gap-2 mb-8">
-            {product.tags.map(tag => (
-              <span key={tag} className="text-[10px] text-white/30 uppercase tracking-[0.15em] border border-white/[0.06] px-3 py-1.5 rounded-full hover:border-gold-500/20 transition-colors">
-                {tag}
-              </span>
-            ))}
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 items-center mb-8">
-            <Button size="lg" className="w-full sm:flex-1 py-6 text-sm md:text-base tracking-[0.15em] uppercase rounded-2xl font-bold group" onClick={handleAddToCart}>
-              <ShoppingBag className="w-5 h-5 group-hover:-translate-y-0.5 transition-transform" /> Add To Cart
-            </Button>
-            <button title="Add to Wishlist" className="w-full sm:w-auto p-4 rounded-2xl glass hover:border-red-500/50 hover:text-red-400 transition-all text-white/40 flex items-center justify-center gap-3">
-              <Heart className="w-6 h-6" />
-              <span className="sm:hidden uppercase tracking-[0.15em] text-xs font-bold">Wishlist</span>
-            </button>
-          </div>
-
-          {/* Trust signals */}
-          <div className="glass rounded-2xl p-5 space-y-4">
-            {[
-              { icon: ShieldCheck, title: "Authenticity Guaranteed", desc: "Sourced from authorized luxury boutiques" },
-              { icon: Truck, title: "Free Insured Shipping", desc: "Premium delivery with full coverage" },
-              { icon: Award, title: "Premium Quality", desc: "Every piece inspected by our experts" },
-            ].map(item => (
-              <div key={item.title} className="flex items-start gap-3">
-                <item.icon className="w-5 h-5 text-gold-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-white/80 text-sm font-medium">{item.title}</h4>
-                  <p className="text-white/30 text-xs">{item.desc}</p>
-                </div>
+            {/* Tags */}
+            {product.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-10">
+                {product.tags.map(tag => (
+                  <span key={tag} className="text-[9px] tracking-[0.25em] uppercase text-white/15 border border-white/[0.04] px-3 py-1.5">
+                    {tag}
+                  </span>
+                ))}
               </div>
-            ))}
-          </div>
-        </motion.div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 mb-10">
+              <Button
+                size="lg"
+                className="flex-1 py-6 text-[11px] tracking-[0.3em] uppercase rounded-none font-medium"
+                onClick={handleAddToCart}
+              >
+                <ShoppingBag className="w-4 h-4" /> Add to Cart
+              </Button>
+              <button
+                type="button"
+                title="Add to Wishlist"
+                className="w-14 flex items-center justify-center border border-white/[0.06] text-white/20 hover:text-red-400 hover:border-red-400/20 transition-all"
+              >
+                <Heart className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Trust signals */}
+            <div className="space-y-4 pt-8 border-t border-white/[0.04]">
+              {[
+                { icon: Shield, text: "Authenticity guaranteed on every piece" },
+                { icon: Truck, text: "Free insured shipping" },
+              ].map(item => (
+                <div key={item.text} className="flex items-center gap-3">
+                  <item.icon className="w-4 h-4 text-gold-400/40 flex-shrink-0" />
+                  <span className="text-white/20 text-xs tracking-[0.1em] font-light">{item.text}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
       </div>
     </div>
   );
