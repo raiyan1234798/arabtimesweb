@@ -4,7 +4,7 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { db } from "../lib/firebase";
 import { collection, query, limit, getDocs, where } from "firebase/firestore";
-import { WatchAssembly } from "../components/ui/WatchAssembly";
+import { ScrollVideo } from "../components/ui/ScrollVideo";
 import type { Product } from "../types";
 
 export const Home = () => {
@@ -48,8 +48,8 @@ export const Home = () => {
   return (
     <div className="w-full bg-black">
 
-      {/* ═══════════════════ WATCH ASSEMBLY HERO ═══════════════════ */}
-      <WatchAssembly />
+      {/* ═══════════════════ SCROLL VIDEO HERO ═══════════════════ */}
+      <ScrollVideo src="/hero-watch.mp4" scrollHeight="600vh" />
 
       {/* ═══════════════════ BRAND INTRO ═══════════════════ */}
       <section className="py-32 md:py-44 border-t border-white/[0.03]">
