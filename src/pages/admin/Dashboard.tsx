@@ -3,7 +3,7 @@ import { auth, db } from "../../lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
-import { Plus, LogOut, Package, Image as ImageIcon, Trash2, Edit3, Grid, Link as LinkIcon } from "lucide-react";
+import { Plus, LogOut, Package, ImageIcon, Trash2, Edit3, Grid, Link as LinkIcon, PlusCircle } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import toast from "react-hot-toast";
 import type { Product } from "../../types";
@@ -19,6 +19,7 @@ export const AdminDashboard = () => {
   // Form State
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [urlInput, setUrlInput] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     price: "",
@@ -39,6 +40,7 @@ export const AdminDashboard = () => {
     });
     setEditingId(null);
     setIsAdding(false);
+    setUrlInput("");
   };
 
   useEffect(() => {
@@ -71,49 +73,14 @@ export const AdminDashboard = () => {
     navigate("/");
   };
 
-  const openCloudinaryWidget = () => {
-    // @ts-ignore
-    const myWidget = window.cloudinary.createUploadWidget(
-      {
-        cloudName: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dsfms55as",
-        uploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "arabtimes_products",
-        multiple: true,
-        clientAllowedFormats: ["webp", "png", "jpg", "jpeg"],
-        maxFiles: 5,
-        styles: {
-          palette: {
-              window: "#111111",
-              windowBorder: "#FFD70033",
-              tabIcon: "#FFD700",
-              menuIcons: "#FFFFFF",
-              textDark: "#000000",
-              textLight: "#FFFFFF",
-              link: "#FFD700",
-              action: "#FFD700",
-              inactiveTabIcon: "#888888",
-              error: "#F44235",
-              inProgress: "#FFD700",
-              complete: "#20B832",
-              sourceBg: "#111111"
-          },
-          fonts: {
-              default: null,
-              "sans-serif": {
-                  url: "https://fonts.googleapis.com/css?family=Inter",
-                  active: true
-              }
-          }
-        }
-      },
-      (error: any, result: any) => {
-        if (!error && result && result.event === "success") {
-          const newUrl = result.info.secure_url;
-          setFormData(prev => ({ ...prev, images: [...prev.images, newUrl] }));
-          toast.success("Image added to gallery");
-        }
-      }
-    );
-    myWidget.open();
+  const addImageByUrl = () => {
+    const trimmed = urlInput.trim();
+    if (!trimmed) { toast.error("Please enter an image URL"); return; }
+    if (!trimmed.startsWith("http")) { toast.error("Please enter a valid URL starting with http"); return; }
+    if (formData.images.includes(trimmed)) { toast.error("This image is already added"); return; }
+    setFormData(prev => ({ ...prev, images: [...prev.images, trimmed] }));
+    setUrlInput("");
+    toast.success("Image added!");
   };
 
   const clearImages = () => setFormData(prev => ({ ...prev, images: [] }));
@@ -241,29 +208,42 @@ export const AdminDashboard = () => {
                   </label>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center bg-black p-4 rounded-xl border border-white/10 hover:border-gold-500/50 transition-all cursor-pointer group" onClick={openCloudinaryWidget}>
-                    <div className="flex items-center gap-3">
-                      <ImageIcon className="w-5 h-5 text-gold-500" />
-                      <span className="text-sm font-medium tracking-wide">Configure Media Assets</span>
-                    </div>
-                    <span className="text-xs text-white/40 group-hover:text-gold-500 uppercase tracking-widest">{formData.images.length} Selected</span>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 bg-black border border-white/10 rounded-xl p-1 pl-4 focus-within:border-gold-500 transition-colors">
+                    <ImageIcon className="w-4 h-4 text-gold-500 flex-shrink-0" />
+                    <input
+                      type="url"
+                      placeholder="Paste image URL (e.g. https://...jpg)"
+                      value={urlInput}
+                      onChange={e => setUrlInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addImageByUrl())}
+                      className="flex-1 bg-transparent text-white text-sm outline-none py-2 placeholder:text-white/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={addImageByUrl}
+                      className="flex items-center gap-1.5 bg-gold-500 hover:bg-gold-400 text-black text-xs font-bold uppercase tracking-widest px-3 py-2 rounded-lg transition-colors"
+                    >
+                      <PlusCircle className="w-3.5 h-3.5" /> Add
+                    </button>
                   </div>
+                  <p className="text-[10px] text-white/30 tracking-wide">Right-click any watch image online → "Copy image address" → paste above. Add up to 5 images.</p>
 
                   {formData.images.length > 0 && (
-                    <div className="grid grid-cols-4 gap-2">
-                       {formData.images.map((url, i) => (
-                         <div key={i} className="aspect-square bg-dark-900 rounded-lg border border-white/5 overflow-hidden group/img relative">
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-4 gap-2">
+                        {formData.images.map((url, i) => (
+                          <div key={i} className="aspect-square bg-dark-900 rounded-lg border border-white/5 overflow-hidden group/img relative">
                             <img src={url} alt={`Preview ${i + 1}`} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-red-600/60 opacity-0 group-hover/img:opacity-100 flex items-center justify-center cursor-pointer transition-opacity" onClick={(e) => {
-                              e.stopPropagation();
+                            <div className="absolute inset-0 bg-red-600/60 opacity-0 group-hover/img:opacity-100 flex items-center justify-center cursor-pointer transition-opacity" onClick={() => {
                               setFormData(prev => ({ ...prev, images: prev.images.filter((_, idx) => idx !== i) }));
                             }}>
                               <Trash2 className="w-4 h-4 text-white" />
                             </div>
-                         </div>
-                       ))}
-                       <button type="button" onClick={(e) => { e.stopPropagation(); clearImages(); }} className="text-[10px] uppercase tracking-widest text-red-500 hover:text-red-400 mt-2 block w-full text-left font-bold opacity-60 hover:opacity-100">Clear All</button>
+                          </div>
+                        ))}
+                      </div>
+                      <button type="button" onClick={clearImages} className="text-[10px] uppercase tracking-widest text-red-500 hover:text-red-400 font-bold opacity-60 hover:opacity-100">Clear All Images</button>
                     </div>
                   )}
                 </div>

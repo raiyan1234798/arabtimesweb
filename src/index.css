@@ -1,18 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Montserrat", "Poppins", sans-serif;
-  
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Playfair Display", Georgia, serif;
+
   --color-gold-300: #ffd700;
   --color-gold-400: #e5c100;
   --color-gold-500: #cca800;
-  
+  --color-gold-600: #b89700;
+
   --color-dark-800: #1a1a1a;
   --color-dark-900: #0a0a0a;
-  --color-dark-950: #050505;
+  --color-dark-950: #030303;
 
-  --animate-fade-in: fade-in 0.5s ease-out;
-  --animate-slide-up: slide-up 0.5s ease-out;
+  --animate-fade-in: fade-in 0.8s ease-out;
+  --animate-slide-up: slide-up 0.8s ease-out;
+  --animate-glow-pulse: glow-pulse 3s ease-in-out infinite;
+  --animate-shimmer: shimmer 2.5s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
 }
 
 @keyframes fade-in {
@@ -21,34 +28,122 @@
 }
 
 @keyframes slide-up {
-  from { transform: translateY(20px); opacity: 0; }
+  from { transform: translateY(30px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
-/* Base styles for premium look */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(204, 168, 0, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(204, 168, 0, 0.25); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+}
+
+@keyframes grain {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-5%, -10%); }
+  30% { transform: translate(3%, -15%); }
+  50% { transform: translate(12%, 9%); }
+  70% { transform: translate(9%, 4%); }
+  90% { transform: translate(-1%, 7%); }
+}
+
 @layer base {
   body {
     @apply bg-dark-950 text-white antialiased font-sans selection:bg-gold-500 selection:text-black scroll-smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-white/5 backdrop-blur-md border border-white/10;
+    @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.08];
+  }
+
+  .glass-strong {
+    @apply bg-white/[0.06] backdrop-blur-2xl border border-white/[0.12];
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #ffd700 0%, #cca800 50%, #ffd700 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-shimmer {
+    background: linear-gradient(90deg, #cca800, #ffd700, #cca800, #ffd700);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s linear infinite;
+  }
+
+  .border-glow {
+    box-shadow: 0 0 15px rgba(204, 168, 0, 0.1), inset 0 0 15px rgba(204, 168, 0, 0.05);
+  }
+
+  .hover-glow {
+    transition: box-shadow 0.5s ease;
+  }
+  .hover-glow:hover {
+    box-shadow: 0 0 30px rgba(204, 168, 0, 0.15), 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+
+  .grain::before {
+    content: "";
+    position: absolute;
+    inset: -50%;
+    width: 200%;
+    height: 200%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    animation: grain 8s steps(10) infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
-/* Custom Scrollbar */
+/* Premium Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #050505;
+  background: #030303;
 }
 ::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 4px;
+  background: linear-gradient(to bottom, #333, #cca800);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #cca800;
+  background: linear-gradient(to bottom, #cca800, #ffd700);
+}
+
+/* Hide cursor on desktop for custom cursor */
+@media (hover: hover) and (pointer: fine) {
+  * {
+    cursor: none !important;
+  }
 }
