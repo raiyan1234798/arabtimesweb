@@ -69,7 +69,7 @@ export const Checkout = () => {
       await addDoc(collection(db, "orders"), orderData);
 
       // WhatsApp Redirect Logic
-      const whatsappNumber = "+917397026980";
+      const whatsappNumber = import.meta.env.VITE_WHATSAPP_NUMBER || "";
       let message = `*New Order Request from Arab Times*%0A%0A`;
       message += `*Customer:* ${formData.firstName} ${formData.lastName}%0A`;
       message += `*Phone:* ${formData.phone}%0A`;

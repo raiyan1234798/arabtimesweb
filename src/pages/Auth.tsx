@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -25,6 +25,7 @@ export const Auth = () => {
   const [showOtp, setShowOtp] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const recaptchaVerifierRef = useRef<InstanceType<typeof RecaptchaVerifier> | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,16 +34,20 @@ export const Auth = () => {
         // User is logged in
       }
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      recaptchaVerifierRef.current?.clear();
+      recaptchaVerifierRef.current = null;
+    };
   }, []);
 
   const setupRecaptcha = () => {
-     if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': () => {},
+    if (!recaptchaVerifierRef.current) {
+      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {},
       });
-     }
+    }
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -83,7 +88,7 @@ export const Auth = () => {
     setLoading(true);
     try {
       setupRecaptcha();
-      const appVerifier = (window as any).recaptchaVerifier;
+      const appVerifier = recaptchaVerifierRef.current!;
       const confirmation = await signInWithPhoneNumber(auth, phone, appVerifier);
       setConfirmationResult(confirmation);
       setShowOtp(true);

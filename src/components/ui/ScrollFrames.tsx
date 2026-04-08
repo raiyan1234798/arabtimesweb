@@ -3,6 +3,7 @@ import { useScroll, useTransform, motion } from "framer-motion";
 
 const TOTAL_FRAMES = 153;
 const FRAME_PATH = "/frames/frame-";
+const PRELOAD_AHEAD = 10; // Load 10 frames ahead/behind current position
 
 /** Pads number to 3 digits: 1 → "001" */
 const pad = (n: number) => String(n).padStart(3, "0");
@@ -16,44 +17,24 @@ interface ScrollFramesProps {
 
 /**
  * Canvas-based scroll-driven frame sequence.
- * Preloads all frames, then draws the correct frame on a
- * <canvas> element as the user scrolls — ultra-smooth, no jank.
+ * Progressively loads frames near the current scroll position
+ * instead of preloading all 153 frames at once.
  */
 export const ScrollFrames = ({ scrollHeight = "600vh" }: ScrollFramesProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imagesRef = useRef<HTMLImageElement[]>([]);
+  const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(TOTAL_FRAMES).fill(null));
+  const loadingRef = useRef<Set<number>>(new Set());
+  const [initialReady, setInitialReady] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
-  const [loaded, setLoaded] = useState(false);
   const currentFrameRef = useRef(0);
+  const loadedCountRef = useRef(0);
+  const mountedRef = useRef(true);
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
   });
-
-  // ── Preload all frames ──
-  useEffect(() => {
-    let loadedCount = 0;
-    const images: HTMLImageElement[] = [];
-
-    for (let i = 1; i <= TOTAL_FRAMES; i++) {
-      const img = new Image();
-      img.src = frameUrl(i);
-      img.onload = () => {
-        loadedCount++;
-        setLoadProgress(loadedCount / TOTAL_FRAMES);
-        if (loadedCount === TOTAL_FRAMES) {
-          setLoaded(true);
-          // Draw first frame immediately
-          drawFrame(0);
-        }
-      };
-      images.push(img);
-    }
-
-    imagesRef.current = images;
-  }, []);
 
   // ── Draw a frame on the canvas ──
   const drawFrame = useCallback((index: number) => {
@@ -62,7 +43,6 @@ export const ScrollFrames = ({ scrollHeight = "600vh" }: ScrollFramesProps) => {
     const img = imagesRef.current[index];
     if (!canvas || !ctx || !img) return;
 
-    // Set canvas to match image dimensions (only once)
     if (canvas.width !== img.naturalWidth) {
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
@@ -72,21 +52,101 @@ export const ScrollFrames = ({ scrollHeight = "600vh" }: ScrollFramesProps) => {
     ctx.drawImage(img, 0, 0);
   }, []);
 
+  // ── Load a single frame ──
+  const loadFrame = useCallback((index: number): Promise<void> => {
+    return new Promise((resolve) => {
+      if (index < 0 || index >= TOTAL_FRAMES) { resolve(); return; }
+      if (imagesRef.current[index] || loadingRef.current.has(index)) { resolve(); return; }
+
+      loadingRef.current.add(index);
+      const img = new Image();
+      img.src = frameUrl(index + 1); // frames are 1-indexed
+      img.onload = () => {
+        if (!mountedRef.current) { resolve(); return; }
+        imagesRef.current[index] = img;
+        loadingRef.current.delete(index);
+        loadedCountRef.current++;
+        setLoadProgress(loadedCountRef.current / TOTAL_FRAMES);
+        resolve();
+      };
+      img.onerror = () => {
+        loadingRef.current.delete(index);
+        resolve();
+      };
+    });
+  }, []);
+
+  // ── Load frames around a given index ──
+  const loadNearbyFrames = useCallback((centerIndex: number) => {
+    const start = Math.max(0, centerIndex - PRELOAD_AHEAD);
+    const end = Math.min(TOTAL_FRAMES - 1, centerIndex + PRELOAD_AHEAD);
+    for (let i = start; i <= end; i++) {
+      loadFrame(i);
+    }
+  }, [loadFrame]);
+
+  // ── Initial load: first batch of frames for instant display ──
+  useEffect(() => {
+    mountedRef.current = true;
+    const initialBatch = Math.min(20, TOTAL_FRAMES);
+
+    const loadInitial = async () => {
+      const promises: Promise<void>[] = [];
+      for (let i = 0; i < initialBatch; i++) {
+        promises.push(loadFrame(i));
+      }
+      await Promise.all(promises);
+      if (mountedRef.current) {
+        setInitialReady(true);
+        drawFrame(0);
+      }
+    };
+
+    loadInitial();
+
+    // Continue loading remaining frames in background
+    const loadRest = async () => {
+      for (let i = initialBatch; i < TOTAL_FRAMES; i++) {
+        if (!mountedRef.current) break;
+        await loadFrame(i);
+      }
+    };
+
+    // Start background loading after initial batch
+    const timer = setTimeout(loadRest, 100);
+
+    return () => {
+      mountedRef.current = false;
+      clearTimeout(timer);
+      // Clean up image references to free memory
+      imagesRef.current.forEach((img) => {
+        if (img) img.src = "";
+      });
+      imagesRef.current = new Array(TOTAL_FRAMES).fill(null);
+      loadingRef.current.clear();
+    };
+  }, [loadFrame, drawFrame]);
+
   // ── Listen to scroll and update frame ──
   useEffect(() => {
     const unsubscribe = scrollYProgress.on("change", (progress) => {
-      if (!loaded) return;
+      if (!initialReady) return;
       const frameIndex = Math.min(
         Math.floor(progress * (TOTAL_FRAMES - 1)),
         TOTAL_FRAMES - 1
       );
       if (frameIndex !== currentFrameRef.current) {
         currentFrameRef.current = frameIndex;
-        requestAnimationFrame(() => drawFrame(frameIndex));
+        // Load nearby frames progressively
+        loadNearbyFrames(frameIndex);
+        // Draw if frame is available
+        if (imagesRef.current[frameIndex]) {
+          requestAnimationFrame(() => drawFrame(frameIndex));
+        }
       }
     });
     return () => unsubscribe();
-  }, [scrollYProgress, loaded, drawFrame]);
+  }, [scrollYProgress, initialReady, drawFrame, loadNearbyFrames]);
 
   // ── Text overlays driven by scroll ──
   const introOpacity = useTransform(scrollYProgress, [0, 0.03, 0.12], [1, 1, 0]);
@@ -108,7 +168,7 @@ export const ScrollFrames = ({ scrollHeight = "600vh" }: ScrollFramesProps) => {
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black flex items-center justify-center">
 
         {/* ── Loading overlay ── */}
-        {!loaded && (
+        {!initialReady && (
           <div className="absolute inset-0 z-30 bg-black flex flex-col items-center justify-center gap-6">
             <div className="w-32 h-px bg-white/[0.06] overflow-hidden">
               <div

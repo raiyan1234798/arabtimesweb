@@ -1,8 +1,10 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Routes, Route, Outlet } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { Navbar } from "./components/layout/Navbar";
 import { Footer } from "./components/layout/Footer";
 import { CustomCursor } from "./components/ui/CustomCursor";
+import { Loader2 } from "lucide-react";
 
 import { Home } from "./pages/Home";
 import { Shop } from "./pages/Shop";
@@ -11,8 +13,16 @@ import { Cart } from "./pages/Cart";
 import { Checkout } from "./pages/Checkout";
 import { Auth } from "./pages/Auth";
 
-import { AdminLogin } from "./pages/admin/Login";
-import { AdminDashboard } from "./pages/admin/Dashboard";
+const AdminLogin = lazy(() => import("./pages/admin/Login").then(m => ({ default: m.AdminLogin })));
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard").then(m => ({ default: m.AdminDashboard })));
+import { AdminRoute } from "./components/AdminRoute";
+
+const AdminFallback = () => (
+  <div className="min-h-screen bg-dark-950 flex flex-col items-center justify-center gap-4">
+    <Loader2 className="w-6 h-6 text-gold-400/50 animate-spin" />
+    <span className="text-[10px] tracking-[0.4em] uppercase text-white/20">Loading...</span>
+  </div>
+);
 
 const RootLayout = () => {
   return (
@@ -52,8 +62,8 @@ function App() {
         
         {/* Admin Routes without main Navbar/Footer layout */}
         <Route path="/admin">
-          <Route index element={<AdminDashboard />} />
-          <Route path="login" element={<AdminLogin />} />
+          <Route index element={<Suspense fallback={<AdminFallback />}><AdminRoute><AdminDashboard /></AdminRoute></Suspense>} />
+          <Route path="login" element={<Suspense fallback={<AdminFallback />}><AdminLogin /></Suspense>} />
         </Route>
       </Routes>
     </Router>

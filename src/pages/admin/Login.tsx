@@ -6,7 +6,7 @@ import { Button } from "../../components/ui/button";
 import { Lock, User } from "lucide-react";
 import toast from "react-hot-toast";
 
-const ADMIN_EMAIL = "abubackerraiyan@gmail.com";
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || "";
 
 export const AdminLogin = () => {
   const [email, setEmail] = useState("");

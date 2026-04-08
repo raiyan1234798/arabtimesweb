@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { auth, db } from "../../lib/firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { Plus, LogOut, Package, ImageIcon, Trash2, Edit3, Grid, Link as LinkIcon, PlusCircle } from "lucide-react";
@@ -8,11 +8,7 @@ import { Button } from "../../components/ui/button";
 import toast from "react-hot-toast";
 import type { Product } from "../../types";
 
-const ADMIN_EMAIL = "abubackerraiyan@gmail.com";
-
 export const AdminDashboard = () => {
-  const [, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const navigate = useNavigate();
 
@@ -34,7 +30,7 @@ export const AdminDashboard = () => {
 
   const resetForm = () => {
     setFormData({
-      name: "", price: "", description: "", category: "men", 
+      name: "", price: "", description: "", category: "men",
       tags: "", trending: false, newArrival: false, discount: "",
       images: []
     });
@@ -44,28 +40,15 @@ export const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (!currentUser) {
-        navigate("/admin/login");
-      } else if (currentUser.email !== ADMIN_EMAIL) {
-        toast.error("You do not have administrative clearance.");
-        navigate("/");
-      } else {
-        setUser(currentUser);
-        setLoading(false);
-      }
-    });
-
     const unsubProducts = onSnapshot(collection(db, "products"), (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
       setProducts(data);
     });
 
     return () => {
-      unsubscribe();
       unsubProducts();
     };
-  }, [navigate]);
+  }, []);
 
 
   const handleLogout = async () => {
@@ -152,8 +135,6 @@ export const AdminDashboard = () => {
       }
     }
   };
-
-  if (loading) return <div className="min-h-screen bg-dark-950 flex items-center justify-center text-white"><div className="animate-pulse tracking-widest uppercase">Verifying Identity...</div></div>;
 
   return (
     <div className="min-h-screen bg-dark-950 p-6 md:p-12 font-sans text-white">
